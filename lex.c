@@ -1,95 +1,44 @@
 #include "gl.h"
-//#include "tok.h"
+#include "tok.h"
 
-char* opchars = "!+-*/<>=:~";
 
 /* all of these operate on
  * the global variable `infile` */
 
-long
-next(void)
-{
-	return Bgetrune(infile);
-}
-
-long
-peek(void)
-{
-	Rune c;
-
-	c = Bgetrune(infile);
-	Bungetrune(infile);
-
-	return c;
-}
-
 int
-eof(void)
-{
-	return peek() < 0;
-}
-
-void
-skip_whitespace(void)
-{
-	while(isspace(peek()))
-		next();
-}
-
-void
-skip_comment(void)
-{
-	while(!eof() && next() != L'»')
-		;
-}
-
-int
-utfcmp(Rune* r₁, Rune* r₂)
-{
-	char *s₁, *s₂;
-
-	s₁ = smprint("%S", r₁);
-	s₂ = smprint("%S", r₂);
-
-	return strcmp(s₁, s₂);
-}
-
-int
-isopchar(long c)
-{
-	if(utfrune(opchars, c) != nil)
-		return 1;
-	return 0;
-}
-
-int
-map_operator(Rune op[])
+map_kwop(char* str)
 {
 	int i;
 
-	for(i = 0; opdict[i].key != nil; i++)
-		if(utfcmp(op, opdict[i].key) == 0)
-			return opdict[i].id;
-
+	for(i = 0; kwopdict[i].key != nil; i++)
+		if(strcmp(kwopdict[i].key, str) == 0)
+			return i;
 	return -1;
+}
+
+TokenEl
+read_punc(void)
+{
+	Tokval v = { .Id = map_kwop(smprint("%C", (Rune)next())) };
+	return (TokenEl){ Punc, v, nil };
 }
 
 TokenEl
 read_op(void)
 {
-	int i, op;
-	Rune c[3];
+	int i, opnum;
+	Rune c[4];
 
-	for(i = 0; !eof() && isopchar(peek()) && i < 2; i++)
+	for(i = 0; !eof() && isopchar(peek()) && i < 3; i++)
 		c[i] = next();
 	c[i] = '\0';
-	op = map_operator(c);
-	if(op < 0)
+
+	opnum = map_kwop(smprint("%S", c));
+	if(opnum < 0)
 		sysfatal("invalid operator %S", c);
 
-	Tokval t;
-	t.op = op;
-	return (TokenEl){ (op==Not) ? Unop : Binop, t, nil };
+	Tokval v = { .Id = kwopdict[opnum].id };
+	return (TokenEl){ kwopdict[opnum].kind, v, nil };
 }
 
 TokenEl
@@ -97,10 +46,8 @@ read_str(void)
 {
 	TokenEl got;
 
-	Tokval t;
-	t.s = Brdstr(infile, '"', 1);
-	got = (TokenEl){ Str, t, nil };
-	Bseek(infile, Blinelen(infile), 1);
+	Tokval v = { .Str = Brdstr(infile, '"', 1) };
+	got = (TokenEl){ Str, v, nil };
 
 	return got;
 }
@@ -113,8 +60,8 @@ read_flt(void)
 	if(Bgetd(infile, &d) < 0)
 		sysfatal("fucking uh-oh");
 
-	Tokval t = { .f = d };
-	return (TokenEl){ Flt, (t = { .f = d }), nil };
+	Tokval t = { .Flt = d };
+	return (TokenEl){ Flt, t, nil };
 }
 
 TokenEl
@@ -128,9 +75,32 @@ read_int(void)
 		i += next() - '0';
 	}
 
-	Tokval t;
-	t.op = i;
+	Tokval t = { .Int = i };
 	return (TokenEl){ Int, t, nil };
+}
+
+TokenEl
+read_id(void)
+{
+	char *ident;
+	Rune buf[1000];
+	Tokkind kind;
+	int i, kwnum;
+
+	for(i = 0; i < 999 && !eof() && !isspace(peek()) && !isspecial(peek()); i++)
+		buf[i] = next();
+	buf[i] = 0;
+	ident = smprint("%S", buf);
+
+	if((kwnum = map_kwop(ident)) >= 0){
+		kind = kwopdict[kwnum].kind;
+		Tokval v = { .Id = kwopdict[kwnum].id };
+		return (TokenEl){ kind, v, nil };
+	}else{
+		kind = Ident;
+		Tokval v = { .Str = ident };
+		return (TokenEl){ kind, v, nil };
+	}
 }
 
 TokenEl
@@ -140,8 +110,10 @@ next_token(void)
 
 	skip_whitespace();
 	c = peek();
-	if(eof())
-		return void;
+	if(eof()){
+		Tokval t = { .Str = nil };
+		return (TokenEl){ (Tokkind) -1, t, nil };
+	}
 
 	switch(c){
 	case L'«':
@@ -160,18 +132,93 @@ next_token(void)
 	if(isopchar(c))
 		return read_op();
 	if(ispunc(c))
-		return (TokenEl){ Punc, next(), nil };
+		return read_punc();
 
 	/* assumed to be an keyword or identifier lol */
 	return read_id();
 }
 
+char*
+nameoftokkind(Tokkind k)
+{
+	switch(k){
+	case Unop:	return "Unop";
+	case Binop:	return "Binop";
+	case Assgn:	return "Assgn";
+	case Keywd:	return "Keywd";
+	case Ident:	return "Ident";
+	case Punc:	return "Punc";
+	case Int:	return "Int";
+	case Flt:	return "Flt";
+	case Str:	return "Str";
+	default:	return "";
+	}
+}
+
+void
+print_tok(TokenEl tok)
+{
+	char* val;
+	int i;
+
+	val = "";
+	switch(tok.t){
+	case Unop:
+	case Binop:
+	case Assgn:
+	case Keywd:
+	case Punc:
+		for(i = 0; kwopdict[i].key != nil; i++)
+			if(kwopdict[i].id == tok.val.Id){
+				val = kwopdict[i].key;
+				goto Out;
+			}
+		break;
+	case Ident:
+	case Str:
+		val = smprint("%s", tok.val.Str);
+		break;
+	case Int:
+		val = smprint("%d", tok.val.Int);
+		break;
+	case Flt:
+		val = smprint("%g", tok.val.Flt);
+		break;
+	}
+	Out:
+
+	if(strcmp(val, "\n") == 0)
+		val = "\\n";
+	if(tok.t == Str || tok.t == Punc)
+		val = smprint("'%s'", val);
+
+	print("{ %s: %s }\n", nameoftokkind(tok.t), val);
+}
+
 void
 mktokenstream(void)
 {
-	TokenEl tokstream;
+	TokenEl tokhead, *currtok;
 
-	while(!eof()){
+	tokhead = next_token();
+	currtok = &tokhead;
+	while(1){
+		TokenEl *nexttok;
+
+		nexttok = malloc(sizeof(TokenEl));
+		*nexttok = next_token();
+		currtok->next = nexttok;
+		if(nexttok->t < 0){
+			currtok->next = nil;
+			break;
+		}
+		currtok = nexttok;
+	}
+
+	currtok = &tokhead;
+	while(currtok != nil){
+		print_tok(*currtok);
+		currtok = currtok->next;
 	}
 }
 

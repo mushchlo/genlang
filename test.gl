@@ -1,3 +1,6 @@
-so this could' be some like genlang code 'i guess idk`
-
-wee woo «»wee woo 
+max := λ(int a, string b)
+		if a < b {
+			return a;
+		} else {
+			return b;
+		}

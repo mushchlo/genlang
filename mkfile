@@ -8,6 +8,7 @@ CFLAGS=-FVw
 OFILES=\
 	main.$O\
 	lex.$O\
+	cradle.$O\
 
 HFILES=\
 	gl.h\
