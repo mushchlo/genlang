@@ -13,31 +13,35 @@ typedef enum {
 } Tokkind;
 
 typedef enum {
+/* mathematical operators */
 	Add,
 	Sub,
 	Mul,
 	Div,
 
+/* truthiness operators*/
 	Gt,
 	Lt,
 	Gteq,
 	Lteq,
 	Doeq,
 	Noteq,
-
 	Not,
 	And,
 	Or,
 	Xor,
 
+/* misc. operator */
 	Concat,
 
+/* assignment operators */
 	Eq,
 	Addeq,
 	Subeq,
 	Muleq,
 	Diveq,
 
+/* keywords */
 	Ret,
 	If,
 	Else,
@@ -45,6 +49,7 @@ typedef enum {
 	True,
 	False,
 
+/* punctuation */
 	Lparen,
 	Rparen,
 	Lcurly,
@@ -90,7 +95,6 @@ Dict kwopdict[] = {
 	"==",		Doeq,	Binop,
 	"!=",		Noteq,	Binop,
 	"~",		Concat,	Binop,
-	"!",		Not,	Unop,
 
 	":=",		Eq,		Assgn,
 	"+=",		Addeq,	Assgn,
@@ -98,6 +102,7 @@ Dict kwopdict[] = {
 	"*=",		Muleq,	Assgn,
 	"/=",		Diveq,	Assgn,
 
+	"!",		Not,	Unop,
 	"and",		And,	Binop,
 	"or",		Or,		Binop,
 	"xor",		Xor,	Binop,
