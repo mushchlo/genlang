@@ -1,7 +1,7 @@
 #include "gl.h"
 
 char* opchars = "!+-*/<>=:~";
-char* puncchars = "(){}[],;\n";
+char* puncchars = "(){}[],;";
 
 long
 next(void)
@@ -30,7 +30,7 @@ eof(void)
 void
 skip_whitespace(void)
 {
-	while(peek() != '\n' && isspace(peek()))
+	while(isspace(peek()))
 		next();
 }
 

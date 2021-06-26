@@ -1,8 +1,9 @@
 /* main.c */
 char* usage(void);
 
-/* lex.c */
-void mktokenstream(void);
+/* printasttok.c */
+void Tokenfmtinstall(void);
+void ASTfmtinstall(void);
 
 /* cradle.c */
 long next(void);

@@ -1,6 +1,23 @@
-max := λ(int a, string b)
-		if a < b {
-			return a;
+print_range := λ(a, b) if a <= b {
+                        print(a);
+                        if b >= a + 1 {
+                          print(", ");
+                          print_range(a + 1, b);
+                        } else print("");
+                      };
+print_range(0,10);
+
+max := λ(a, b){
+		if a > b {
+			a;
 		} else {
-			return b;
-		}
+			b;
+		};
+};
+println(max(9, 2));
+
+
+fn := λ(x){
+		x - 2 * 10 + 4;
+		max(x, 1);
+};
